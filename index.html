@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Outlaw Frontier: 3D Western</title>
+  <title>Outlaw Frontier: Tactical Arena 3D</title>
   <style>
     * {
       box-sizing: border-box;
@@ -17,9 +17,9 @@
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background-color: #080504;
+      background-color: #060403;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      color: #f1e7d0;
+      color: #f5eedc;
     }
     #game-canvas {
       position: absolute;
@@ -42,90 +42,107 @@
       pointer-events: auto;
     }
 
-    /* RETÍCULO TÁTICO */
-    .crosshair-container {
+    /* MIRA TÁTICA E HITMARKER */
+    .crosshair-box {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       pointer-events: none;
+      width: 24px;
+      height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: opacity 0.15s ease;
     }
-    .crosshair-circle {
-      width: 22px;
-      height: 22px;
-      border: 1.5px solid rgba(255, 255, 255, 0.5);
+    .crosshair-reticle {
+      width: 18px;
+      height: 18px;
+      border: 1.5px solid rgba(255, 255, 255, 0.7);
       border-radius: 50%;
       position: relative;
+      transition: transform 0.05s ease, border-color 0.1s ease;
     }
     .crosshair-center {
       width: 4px;
       height: 4px;
-      background: #ffc107;
+      background: #ffcc00;
       border-radius: 50%;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
     }
+    .crosshair-reticle.hit {
+      transform: scale(1.4);
+      border-color: #ff3333;
+      box-shadow: 0 0 10px #ff3333;
+    }
+    .crosshair-reticle.crit {
+      transform: scale(1.7);
+      border-color: #ffff00;
+      box-shadow: 0 0 14px #ffff00;
+    }
 
-    /* LUNETA SNIPER */
-    .sniper-scope-overlay {
+    /* LUNETA SNIPER TÁTICA */
+    .scope-overlay {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: radial-gradient(circle at center, transparent 38%, rgba(0, 0, 0, 0.96) 42%, #000 70%);
-      pointer-events: none;
+      background: radial-gradient(circle at center, transparent 36%, rgba(0, 0, 0, 0.96) 40%, #000 70%);
       display: none;
+      pointer-events: none;
       z-index: 15;
     }
-    .scope-reticle-h {
+    .scope-h {
       position: absolute;
       top: 50%;
       left: 0;
       width: 100%;
       height: 1px;
-      background: rgba(255, 30, 30, 0.85);
+      background: rgba(0, 229, 255, 0.8);
       transform: translateY(-50%);
     }
-    .scope-reticle-v {
+    .scope-v {
       position: absolute;
       left: 50%;
       top: 0;
       width: 1px;
       height: 100%;
-      background: rgba(255, 30, 30, 0.85);
+      background: rgba(0, 229, 255, 0.8);
       transform: translateX(-50%);
     }
-    .scope-ticks {
+    .scope-grid {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 120px;
-      height: 120px;
-      border: 1px dashed rgba(255, 255, 255, 0.3);
+      width: 160px;
+      height: 160px;
+      border: 1px dashed rgba(0, 229, 255, 0.4);
       border-radius: 50%;
     }
 
-    /* STATUS PANEL */
-    .stats-panel {
+    /* PAINEL DE STATUS & MAESTRIA (XP) */
+    .top-left-panel {
       position: absolute;
       top: 15px;
       left: 15px;
-      background: rgba(18, 12, 10, 0.88);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .status-card {
+      background: rgba(18, 12, 10, 0.9);
       border: 2px solid #8e6234;
       border-radius: 8px;
       padding: 10px 16px;
       display: flex;
       flex-direction: column;
       gap: 6px;
-      backdrop-filter: blur(4px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.7);
     }
     .stat-row {
       display: flex;
@@ -138,7 +155,7 @@
       letter-spacing: 1px;
     }
     .bar-container {
-      width: 110px;
+      width: 120px;
       height: 8px;
       background: #251610;
       border-radius: 4px;
@@ -148,12 +165,23 @@
     .bar-fill {
       height: 100%;
       width: 100%;
-      transition: width 0.15s ease-out;
+      transition: width 0.1s ease;
     }
     .hp-fill { background: linear-gradient(90deg, #d32f2f, #ff5252); }
     .stamina-fill { background: linear-gradient(90deg, #f57c00, #ffb74d); }
+    .xp-fill { background: linear-gradient(90deg, #00b0ff, #80d8ff); }
 
-    /* INVENTÁRIO */
+    .mastery-badge {
+      font-size: 11px;
+      color: #ffd700;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* INVENTÁRIO VELOZ */
     .inventory-bar {
       position: absolute;
       bottom: 20px;
@@ -167,7 +195,7 @@
       background: rgba(22, 14, 11, 0.9);
       border: 2px solid #5a3c22;
       border-radius: 8px;
-      padding: 8px 12px;
+      padding: 8px 14px;
       min-width: 95px;
       text-align: center;
       cursor: pointer;
@@ -185,10 +213,10 @@
       font-weight: 800;
       text-transform: uppercase;
     }
-    .weapon-slot .w-rarity {
+    .weapon-slot .w-sub {
       font-size: 9px;
-      letter-spacing: 0.5px;
       margin-top: 2px;
+      color: #9c8a78;
     }
     .w-sniper { color: #00e5ff; }
     .w-repeater { color: #ff5252; }
@@ -199,7 +227,7 @@
       position: absolute;
       top: 15px;
       right: 15px;
-      background: rgba(18, 12, 10, 0.88);
+      background: rgba(18, 12, 10, 0.9);
       border: 2px solid #8e6234;
       border-radius: 8px;
       padding: 8px 16px;
@@ -213,14 +241,14 @@
       color: #ffd700;
       line-height: 1;
     }
-    .ammo-type {
+    .ammo-name {
       font-size: 10px;
       text-transform: uppercase;
       color: #b8a693;
       margin-top: 2px;
     }
 
-    /* TOUCH MOBILE */
+    /* CONTROLES MOBILE TOUCH */
     .touch-controls {
       position: absolute;
       top: 0;
@@ -236,8 +264,8 @@
       left: 25px;
       width: 130px;
       height: 130px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 2px dashed rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.06);
+      border: 2px dashed rgba(255, 255, 255, 0.25);
       border-radius: 50%;
       pointer-events: auto;
     }
@@ -267,23 +295,23 @@
       right: 25px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
       align-items: flex-end;
       pointer-events: auto;
     }
     .action-row {
       display: flex;
-      gap: 12px;
+      gap: 10px;
     }
     .touch-btn {
       background: rgba(20, 14, 10, 0.85);
       border: 2px solid #8e6234;
       color: #fff;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
       border-radius: 50%;
-      width: 60px;
-      height: 60px;
+      width: 55px;
+      height: 55px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -296,14 +324,33 @@
       background: #4a301d;
     }
     .fire-btn {
-      width: 72px;
-      height: 72px;
+      width: 70px;
+      height: 70px;
       background: linear-gradient(135deg, #c62828, #e53935);
       border-color: #ff8a80;
     }
     .scope-btn {
       background: linear-gradient(135deg, #00838f, #00acc1);
       border-color: #80deea;
+    }
+
+    /* POPUPS DE DANO FLUTUANTES (CSS OVERLAY 3D PROJECTION) */
+    .damage-popup {
+      position: absolute;
+      font-weight: 900;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      animation: damageRise 0.7s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.9);
+      z-index: 20;
+    }
+    .damage-normal { font-size: 18px; color: #ffeb3b; }
+    .damage-crit { font-size: 26px; color: #ff1744; letter-spacing: 1px; }
+
+    @keyframes damageRise {
+      0% { opacity: 1; transform: translate(-50%, -50%) scale(0.7); }
+      40% { transform: translate(-50%, -90px) scale(1.2); }
+      100% { opacity: 0; transform: translate(-50%, -130px) scale(0.9); }
     }
 
     /* MODAL */
@@ -331,7 +378,7 @@
       box-shadow: 0 15px 40px rgba(0,0,0,0.9);
     }
     .modal-box h1 {
-      font-size: 30px;
+      font-size: 28px;
       color: #e5b26b;
       margin-bottom: 6px;
       text-transform: uppercase;
@@ -362,46 +409,56 @@
   <canvas id="game-canvas"></canvas>
 
   <div class="hud-layer">
-    <div id="crosshair-container" class="crosshair-container">
-      <div class="crosshair-circle">
+    <div id="crosshair-box" class="crosshair-box">
+      <div id="crosshair-reticle" class="crosshair-reticle">
         <div class="crosshair-center"></div>
       </div>
     </div>
 
-    <div id="sniper-scope" class="sniper-scope-overlay">
-      <div class="scope-reticle-h"></div>
-      <div class="scope-reticle-v"></div>
-      <div class="scope-ticks"></div>
+    <div id="scope-overlay" class="scope-overlay">
+      <div class="scope-h"></div>
+      <div class="scope-v"></div>
+      <div class="scope-grid"></div>
     </div>
 
-    <div class="stats-panel">
-      <div class="stat-row">
-        <span>Vida</span>
-        <div class="bar-container"><div id="hp-bar" class="bar-fill hp-fill"></div></div>
-      </div>
-      <div class="stat-row">
-        <span>Stamina</span>
-        <div class="bar-container"><div id="stamina-bar" class="bar-fill stamina-fill"></div></div>
+    <div class="top-left-panel">
+      <div class="status-card">
+        <div class="mastery-badge">
+          <span>Maestria: Nível <span id="level-val">1</span></span>
+          <span style="color:#80d8ff;">+<span id="speed-bonus-val">0</span>% Vel</span>
+        </div>
+        <div class="stat-row">
+          <span>XP</span>
+          <div class="bar-container"><div id="xp-bar" class="bar-fill xp-fill" style="width:0%;"></div></div>
+        </div>
+        <div class="stat-row">
+          <span>Vida</span>
+          <div class="bar-container"><div id="hp-bar" class="bar-fill hp-fill"></div></div>
+        </div>
+        <div class="stat-row">
+          <span>Stamina</span>
+          <div class="bar-container"><div id="stamina-bar" class="bar-fill stamina-fill"></div></div>
+        </div>
       </div>
     </div>
 
     <div class="ammo-panel">
       <div class="ammo-digits"><span id="ammo-cur">5</span>/<span id="ammo-max">5</span></div>
-      <div class="ammo-type" id="ammo-weapon-name">Sharps .50 Sniper</div>
+      <div class="ammo-name" id="ammo-weapon-name">Sharps .50 Sniper</div>
     </div>
 
     <div class="inventory-bar">
       <div class="weapon-slot active" id="slot-0" onclick="switchWeapon(0)">
         <div class="w-name w-sniper">Sharps .50</div>
-        <div class="w-rarity w-sniper">Sniper Scope</div>
+        <div class="w-sub">Sniper Zoom</div>
       </div>
       <div class="weapon-slot" id="slot-1" onclick="switchWeapon(1)">
         <div class="w-name w-repeater">Winchester</div>
-        <div class="w-rarity w-repeater">Repetição</div>
+        <div class="w-sub">Repetição Rápida</div>
       </div>
       <div class="weapon-slot" id="slot-2" onclick="switchWeapon(2)">
         <div class="w-name w-shotgun">Sawed-Off</div>
-        <div class="w-rarity w-shotgun">Cano Duplo</div>
+        <div class="w-sub">Impacto Brutal</div>
       </div>
     </div>
   </div>
@@ -410,9 +467,7 @@
     <div class="joystick-zone" id="joystick-zone">
       <div class="joystick-knob" id="joystick-knob"></div>
     </div>
-
     <div class="touch-aim-zone" id="touch-aim-zone"></div>
-
     <div class="mobile-buttons">
       <div class="action-row">
         <button class="touch-btn scope-btn" id="btn-touch-scope">Mira</button>
@@ -426,14 +481,14 @@
   <div id="start-modal" class="modal-overlay interactive">
     <div class="modal-box">
       <h1>Outlaw Frontier</h1>
-      <p>Câmera Over-the-Shoulder (sobre o ombro direito) com mira livre e visão limpa do alvo.</p>
-      <button id="btn-play" class="btn-action">Entrar no Jogo</button>
+      <p>Arena Tática: Suba nos andares do Saloon, use barris explosivos e evolua sua Maestria de combate.</p>
+      <button id="btn-play" class="btn-action">Combater</button>
     </div>
   </div>
 
   <script>
     /* =========================================================================
-       1. DEFINIÇÃO DAS ARMAS
+       1. ARQUITETURA DE ARMAS E BALÍSTICA
        ========================================================================= */
     const WEAPONS = [
       {
@@ -443,23 +498,27 @@
         type: 'sniper',
         ammo: 5,
         maxAmmo: 5,
-        damage: 85,
-        fireRate: 0.8,
-        spread: 0.002,
+        damage: 90,
+        critMultiplier: 2.5,
+        fireRate: 0.65,
+        reloadTime: 1.1,
+        spread: 0.001,
         pellets: 1,
         hasScope: true,
-        scopeZoomFov: 20
+        scopeFov: 20
       },
       {
         id: 1,
         name: 'Winchester',
         label: 'Winchester Repeater',
         type: 'rifle',
-        ammo: 10,
-        maxAmmo: 10,
-        damage: 34,
-        fireRate: 0.25,
-        spread: 0.012,
+        ammo: 12,
+        maxAmmo: 12,
+        damage: 36,
+        critMultiplier: 1.8,
+        fireRate: 0.18,
+        reloadTime: 0.85,
+        spread: 0.008,
         pellets: 1,
         hasScope: false
       },
@@ -470,10 +529,12 @@
         type: 'shotgun',
         ammo: 2,
         maxAmmo: 2,
-        damage: 22,
-        fireRate: 0.6,
-        spread: 0.075,
-        pellets: 6,
+        damage: 24,
+        critMultiplier: 1.5,
+        fireRate: 0.45,
+        reloadTime: 0.95,
+        spread: 0.065,
+        pellets: 7,
         hasScope: false
       }
     ];
@@ -485,7 +546,34 @@
     let lastShootTime = 0;
 
     /* =========================================================================
-       2. THREE.JS CENÁRIO & RENDERIZADOR
+       2. PROGRESSÃO & MAESTRIA (XP & LEVEL-UP)
+       ========================================================================= */
+    const progression = {
+      level: 1,
+      currentXp: 0,
+      xpNeeded: 100,
+      speedBonus: 0,
+      critBonus: 0,
+      reloadBonus: 0,
+      addXp(amt) {
+        this.currentXp += amt;
+        if (this.currentXp >= this.xpNeeded) {
+          this.currentXp -= this.xpNeeded;
+          this.level++;
+          this.xpNeeded = Math.floor(this.xpNeeded * 1.4);
+          this.speedBonus += 6;
+          this.critBonus += 0.15;
+          this.reloadBonus += 0.05;
+
+          document.getElementById('level-val').innerText = this.level;
+          document.getElementById('speed-bonus-val').innerText = this.speedBonus;
+        }
+        document.getElementById('xp-bar').style.width = `${(this.currentXp / this.xpNeeded) * 100}%`;
+      }
+    };
+
+    /* =========================================================================
+       3. THREE.JS CENÁRIO, LUZES & FÍSICA VERTICAL
        ========================================================================= */
     const canvas = document.getElementById('game-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -495,23 +583,24 @@
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xd47545);
-    scene.fog = new THREE.FogExp2(0xd47545, 0.012);
+    scene.background = new THREE.Color(0xd67440);
+    scene.fog = new THREE.FogExp2(0xd67440, 0.01);
 
     const normalFov = 65;
     const camera = new THREE.PerspectiveCamera(normalFov, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-    const ambientLight = new THREE.AmbientLight(0x734832, 1.4);
+    const ambientLight = new THREE.AmbientLight(0x7a4d38, 1.4);
     scene.add(ambientLight);
 
-    const sunLight = new THREE.DirectionalLight(0xffbe85, 2.3);
-    sunLight.position.set(60, 50, -50);
+    const sunLight = new THREE.DirectionalLight(0xffbe85, 2.5);
+    sunLight.position.set(70, 60, -60);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.width = 2048;
     sunLight.shadow.mapSize.height = 2048;
     scene.add(sunLight);
 
-    const groundGeo = new THREE.PlaneGeometry(300, 300);
+    // Chão arenoso
+    const groundGeo = new THREE.PlaneGeometry(350, 350);
     const groundMat = new THREE.MeshStandardMaterial({ color: 0xba713d, roughness: 0.9 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
@@ -519,23 +608,103 @@
     scene.add(ground);
 
     /* =========================================================================
-       3. CONSTRUÇÃO DO PERSONAGEM (Braço e Mira Alinhados)
+       4. CONSTRUÇÕES E ELEMENTOS TÁTICOS (SALOON 2 ANDARES, RAMPAS, TNT)
        ========================================================================= */
-    function buildRealisticCowboy() {
+    const platforms = []; // Caixas de colisão verticais para andar/subir
+    const explosiveBarrels = [];
+
+    function addPlatform(x, y, z, w, h, d, color = 0x5a3b25) {
+      const geo = new THREE.BoxGeometry(w, h, d);
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, y + h / 2, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+
+      const box = {
+        minX: x - w / 2 - 0.5,
+        maxX: x + w / 2 + 0.5,
+        minZ: z - d / 2 - 0.5,
+        maxZ: z + d / 2 + 0.5,
+        topY: y + h,
+        botY: y
+      };
+      platforms.push(box);
+      return mesh;
+    }
+
+    // Saloon de 2 Andares
+    addPlatform(0, 0, -22, 16, 4.5, 14, 0x6e452a); // 1º Andar
+    addPlatform(0, 4.5, -22, 14, 4.0, 12, 0x5c371e); // 2º Andar
+    addPlatform(0, 4.5, -14.5, 14, 0.4, 3, 0x4a2a16); // Sacada / Varanda frontal
+
+    // Rampa de Acesso ao 2º Andar
+    for (let i = 0; i < 10; i++) {
+      addPlatform(-8.5 + (i * 0.8), i * 0.45, -14, 1.2, 0.5, 2.5, 0x4a2a16);
+    }
+
+    // Torre de Vigia Elevada
+    addPlatform(22, 0, 12, 1.2, 7.5, 1.2, 0x3d2314);
+    addPlatform(22, 7.5, 12, 6, 0.5, 6, 0x5a3b25); // Topo da Torre
+
+    // Rampa da Torre
+    for (let i = 0; i < 12; i++) {
+      addPlatform(22, i * 0.62, 15 - (i * 1.0), 2.0, 0.5, 1.2, 0x4a2a16);
+    }
+
+    // Caixotes e Coberturas Táticas
+    addPlatform(-5, 0, 0, 2.5, 2, 2.5, 0x8b5a2b);
+    addPlatform(6, 0, -5, 3, 1.8, 2, 0x8b5a2b);
+    addPlatform(-14, 0, -8, 2, 2.2, 2, 0x8b5a2b);
+
+    // Barris Explosivos de TNT
+    function createExplosiveBarrel(x, y, z) {
+      const group = new THREE.Group();
+      const barrel = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.5, 0.5, 1.3, 12),
+        new THREE.MeshStandardMaterial({ color: 0xb71c1c, roughness: 0.6 })
+      );
+      barrel.position.y = 0.65;
+      barrel.castShadow = true;
+      group.add(barrel);
+
+      const label = new THREE.Mesh(
+        new THREE.BoxGeometry(0.6, 0.3, 1.05),
+        new THREE.MeshStandardMaterial({ color: 0xffeb3b })
+      );
+      label.position.y = 0.65;
+      group.add(label);
+
+      group.position.set(x, y, z);
+      scene.add(group);
+
+      explosiveBarrels.push({
+        mesh: group,
+        position: new THREE.Vector3(x, y + 0.65, z),
+        hp: 1,
+        exploded: false
+      });
+    }
+
+    createExplosiveBarrel(-3, 0, -1);
+    createExplosiveBarrel(4, 0, -6);
+    createExplosiveBarrel(0, 4.5, -14); // Na sacada do 2º andar
+
+    /* =========================================================================
+       5. MODELAGEM AVANÇADA DE PISTOLEIROS (DANO VISUAL / FLASH)
+       ========================================================================= */
+    function buildPistoleiro(coatColor = 0x7c2d20) {
       const root = new THREE.Group();
 
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(0.7, 0.9, 0.4),
-        new THREE.MeshStandardMaterial({ color: 0x7c2d20, roughness: 0.7 })
-      );
+      const bodyMat = new THREE.MeshStandardMaterial({ color: coatColor, roughness: 0.7 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.4), bodyMat);
       body.position.y = 1.35;
       body.castShadow = true;
       root.add(body);
 
-      const head = new THREE.Mesh(
-        new THREE.BoxGeometry(0.35, 0.36, 0.35),
-        new THREE.MeshStandardMaterial({ color: 0xe0ac82, roughness: 0.6 })
-      );
+      const headMat = new THREE.MeshStandardMaterial({ color: 0xe0ac82, roughness: 0.6 });
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.36, 0.36), headMat);
       head.position.y = 2.0;
       head.castShadow = true;
       root.add(head);
@@ -547,6 +716,7 @@
       hat.position.y = 2.22;
       root.add(hat);
 
+      // Pernas
       const legMat = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.8 });
       const leftLegGroup = new THREE.Group();
       leftLegGroup.position.set(-0.2, 0.9, 0);
@@ -562,18 +732,12 @@
       rightLegGroup.add(rightLeg);
       root.add(rightLegGroup);
 
-      const armMat = new THREE.MeshStandardMaterial({ color: 0x7c2d20, roughness: 0.7 });
-      const leftArmGroup = new THREE.Group();
-      leftArmGroup.position.set(-0.48, 1.7, 0);
-      const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.75, 0.2), armMat);
-      leftArm.position.y = -0.37;
-      leftArmGroup.add(leftArm);
-      root.add(leftArmGroup);
-
+      // Braço Articulado
       const rightShoulder = new THREE.Group();
       rightShoulder.position.set(0.48, 1.7, 0);
       root.add(rightShoulder);
 
+      const armMat = new THREE.MeshStandardMaterial({ color: coatColor, roughness: 0.7 });
       const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.75, 0.2), armMat);
       rightArm.position.y = -0.37;
       rightShoulder.add(rightArm);
@@ -585,10 +749,8 @@
       const muzzleNode = new THREE.Group();
       weaponGroup.add(muzzleNode);
 
-      function updateWeaponModel(weapon) {
-        while (weaponGroup.children.length > 0) {
-          weaponGroup.remove(weaponGroup.children[0]);
-        }
+      function updateWeapon(weapon) {
+        while (weaponGroup.children.length > 0) weaponGroup.remove(weaponGroup.children[0]);
         weaponGroup.add(muzzleNode);
 
         const metalMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.85, roughness: 0.2 });
@@ -606,7 +768,7 @@
 
           const scope = new THREE.Mesh(
             new THREE.CylinderGeometry(0.035, 0.035, 0.45, 8),
-            new THREE.MeshStandardMaterial({ color: 0x00e5ff, metalness: 0.9, roughness: 0.1 })
+            new THREE.MeshStandardMaterial({ color: 0x00e5ff, metalness: 0.9 })
           );
           scope.rotation.x = Math.PI / 2;
           scope.position.set(0, 0.14, 0.1);
@@ -641,24 +803,37 @@
         }
       }
 
-      updateWeaponModel(currentWeapon);
+      updateWeapon(currentWeapon);
+
+      // Feedback Visual de Dano (Flash Vermelho no Modelo)
+      function flashHit() {
+        const originalColor = bodyMat.color.getHex();
+        bodyMat.color.setHex(0xffffff);
+        headMat.color.setHex(0xff0000);
+        setTimeout(() => {
+          bodyMat.color.setHex(originalColor);
+          headMat.color.setHex(0xe0ac82);
+        }, 120);
+      }
 
       return {
         root,
+        head,
+        body,
         leftLeg: leftLegGroup,
         rightLeg: rightLegGroup,
-        leftArm: leftArmGroup,
         rightShoulder,
         muzzleNode,
-        updateWeaponModel
+        updateWeapon,
+        flashHit
       };
     }
 
-    const playerAvatar = buildRealisticCowboy();
+    const playerAvatar = buildPistoleiro(0x82291e);
     scene.add(playerAvatar.root);
 
     /* =========================================================================
-       4. ESTADO DO JOGADOR
+       6. ESTADO DO JOGADOR, FÍSICA & CÂMERA
        ========================================================================= */
     const player = {
       position: new THREE.Vector3(0, 0, 10),
@@ -676,19 +851,20 @@
     const keys = {};
 
     /* =========================================================================
-       5. BOT NO SOLO
+       7. BOTS INTELIGENTES (Patrulha Vertical & Duelo)
        ========================================================================= */
-    class GroundBot {
-      constructor(name, x, z) {
+    class TacticalBot {
+      constructor(name, x, y, z, coatColor) {
         this.name = name;
-        this.avatar = buildRealisticCowboy();
-        this.position = new THREE.Vector3(x, 0, z);
+        this.avatar = buildPistoleiro(coatColor);
+        this.position = new THREE.Vector3(x, y, z);
         this.avatar.root.position.copy(this.position);
         scene.add(this.avatar.root);
 
         this.hp = 100;
         this.shootTimer = 0;
         this.walkCycle = 0;
+        this.patrolTarget = new THREE.Vector3(x, y, z);
       }
 
       update(delta, targetPos) {
@@ -698,66 +874,91 @@
         const dist = this.position.distanceTo(targetPos);
         const moveDir = new THREE.Vector3();
 
-        if (dist < 22) {
-          moveDir.subVectors(targetPos, this.position).normalize();
+        if (dist < 28) {
+          moveDir.subVectors(targetPos, this.position);
+          moveDir.y = 0;
+          moveDir.normalize();
+
           this.avatar.root.rotation.y = Math.atan2(moveDir.x, moveDir.z);
 
-          if (dist > 9) {
-            this.position.addScaledVector(moveDir, 4.0 * delta);
-          } else if (dist < 5) {
-            this.position.addScaledVector(moveDir, -2.5 * delta);
+          if (dist > 10) {
+            this.position.addScaledVector(moveDir, 4.5 * delta);
+          } else if (dist < 6) {
+            this.position.addScaledVector(moveDir, -3.0 * delta);
           }
 
-          if (this.shootTimer <= 0 && dist < 20) {
+          if (this.shootTimer <= 0 && dist < 25) {
             this.shoot();
-            this.shootTimer = 1.6 + Math.random();
+            this.shootTimer = 1.3 + Math.random();
           }
         }
 
-        this.position.y = 0;
-        this.avatar.root.position.copy(this.position);
-
+        // Animação de pernas
         if (moveDir.lengthSq() > 0.01) {
-          this.walkCycle += delta * 10;
+          this.walkCycle += delta * 11;
           this.avatar.leftLeg.rotation.x = Math.sin(this.walkCycle) * 0.6;
           this.avatar.rightLeg.rotation.x = -Math.sin(this.walkCycle) * 0.6;
         }
+
+        this.avatar.root.position.copy(this.position);
       }
 
       shoot() {
-        const muzzleWorld = new THREE.Vector3();
-        this.avatar.muzzleNode.getWorldPosition(muzzleWorld);
-        createTracer(muzzleWorld, player.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 0xff5522);
+        const muzzlePos = new THREE.Vector3();
+        this.avatar.muzzleNode.getWorldPosition(muzzlePos);
+        createTracer(muzzlePos, player.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 0xff5522);
 
         if (Math.random() > 0.5) {
-          player.hp = Math.max(0, player.hp - 12);
+          player.hp = Math.max(0, player.hp - 14);
           updateHUD();
         }
       }
 
-      takeDamage(dmg) {
+      takeDamage(dmg, isCrit, hitWorldPos) {
         this.hp -= dmg;
+        this.avatar.flashHit();
+        progression.addXp(isCrit ? 45 : 25);
+        showDamagePopup(dmg, isCrit, hitWorldPos);
+
+        // Recuo tátil de impacto (Knockback)
+        const dir = new THREE.Vector3().subVectors(this.position, player.position).normalize();
+        this.position.addScaledVector(dir, 0.8);
+
         if (this.hp <= 0) {
-          this.hp = 100;
-          this.position.set((Math.random() - 0.5) * 80, 0, (Math.random() - 0.5) * 80);
+          progression.addXp(120);
+          this.respawn();
         }
+      }
+
+      respawn() {
+        this.hp = 100;
+        const spawnPoints = [
+          new THREE.Vector3(-15, 0, -10),
+          new THREE.Vector3(15, 0, -12),
+          new THREE.Vector3(0, 4.5, -18), // 2º Andar do Saloon
+          new THREE.Vector3(22, 7.5, 12)  // Topo da Torre
+        ];
+        const sp = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+        this.position.copy(sp);
+        this.avatar.root.position.copy(this.position);
       }
     }
 
     const bots = [
-      new GroundBot('Foragido 1', -15, -12),
-      new GroundBot('Foragido 2', 15, -12)
+      new TacticalBot('Foragido Saloon', 0, 4.5, -18, 0x1d3a5a),
+      new TacticalBot('Sniper da Torre', 22, 7.5, 12, 0x234d31),
+      new TacticalBot('Assaltante de Solo', -12, 0, 0, 0x4a2a16)
     ];
 
     /* =========================================================================
-       6. COMBATE BALÍSTICO
+       8. SISTEMA DE DISPARO, POPUPS DE DANO & EXPLOSÕES
        ========================================================================= */
     const tracers = [];
 
     function switchWeapon(index) {
       currentWeaponIndex = index;
       currentWeapon = WEAPONS[index];
-      playerAvatar.updateWeaponModel(currentWeapon);
+      playerAvatar.updateWeapon(currentWeapon);
 
       document.querySelectorAll('.weapon-slot').forEach((el, i) => {
         el.classList.toggle('active', i === index);
@@ -767,22 +968,21 @@
       document.getElementById('ammo-max').innerText = currentWeapon.maxAmmo;
       document.getElementById('ammo-weapon-name').innerText = currentWeapon.label;
 
-      if (!currentWeapon.hasScope && isAimingScope) {
-        toggleScope(false);
-      }
+      if (!currentWeapon.hasScope && isAimingScope) toggleScope(false);
     }
 
     function toggleScope(forceState) {
       if (!currentWeapon.hasScope) return;
       isAimingScope = typeof forceState === 'boolean' ? forceState : !isAimingScope;
 
-      document.getElementById('sniper-scope').style.display = isAimingScope ? 'block' : 'none';
-      document.getElementById('crosshair-container').style.opacity = isAimingScope ? '0' : '1';
+      document.getElementById('scope-overlay').style.display = isAimingScope ? 'block' : 'none';
+      document.getElementById('crosshair-box').style.opacity = isAimingScope ? '0' : '1';
     }
 
     function shootWeapon() {
       const now = performance.now() / 1000;
-      if (now - lastShootTime < currentWeapon.fireRate) return;
+      const rate = currentWeapon.fireRate * (1 - progression.reloadBonus);
+      if (now - lastShootTime < rate) return;
       if (currentWeapon.ammo <= 0 || isReloading) {
         reloadWeapon();
         return;
@@ -796,21 +996,73 @@
       playerAvatar.muzzleNode.getWorldPosition(muzzlePos);
 
       const raycaster = new THREE.Raycaster();
+
       for (let p = 0; p < currentWeapon.pellets; p++) {
         const spreadX = (Math.random() - 0.5) * currentWeapon.spread;
         const spreadY = (Math.random() - 0.5) * currentWeapon.spread;
         raycaster.setFromCamera(new THREE.Vector2(spreadX, spreadY), camera);
 
-        const hitTarget = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(120));
+        const hitTarget = raycaster.ray.origin.clone().add(raycaster.ray.direction.clone().multiplyScalar(140));
         createTracer(muzzlePos, hitTarget, currentWeapon.hasScope ? 0x00e5ff : 0xffaa33);
 
+        // Checagem de Acerto em Barris de TNT
+        explosiveBarrels.forEach(barrel => {
+          if (barrel.exploded) return;
+          const box = new THREE.Box3().setFromObject(barrel.mesh);
+          if (raycaster.ray.intersectsBox(box)) {
+            triggerExplosion(barrel);
+          }
+        });
+
+        // Checagem de Acerto em Bots (Headshot / Dano Crítico)
         bots.forEach(bot => {
-          const botBox = new THREE.Box3().setFromObject(bot.avatar.root);
-          if (raycaster.ray.intersectsBox(botBox)) {
-            bot.takeDamage(currentWeapon.damage);
+          if (bot.hp <= 0) return;
+
+          const headBox = new THREE.Box3().setFromObject(bot.avatar.head);
+          const bodyBox = new THREE.Box3().setFromObject(bot.avatar.body);
+
+          const isHeadshot = raycaster.ray.intersectsBox(headBox);
+          const isBodyHit = raycaster.ray.intersectsBox(bodyBox);
+
+          if (isHeadshot || isBodyHit) {
+            let baseDamage = currentWeapon.damage;
+            let isCrit = false;
+
+            if (isHeadshot) {
+              baseDamage *= (currentWeapon.critMultiplier + progression.critBonus);
+              isCrit = true;
+            }
+
+            const hitPos = isHeadshot ? bot.avatar.head.position.clone() : bot.avatar.body.position.clone();
+            hitPos.add(bot.position);
+
+            bot.takeDamage(Math.floor(baseDamage), isCrit, hitPos);
+            triggerHitmarker(isCrit);
           }
         });
       }
+    }
+
+    function triggerExplosion(barrel) {
+      barrel.exploded = true;
+      scene.remove(barrel.mesh);
+
+      // Flash & Luz da explosão
+      const boomLight = new THREE.PointLight(0xff3d00, 10, 18);
+      boomLight.position.copy(barrel.position);
+      scene.add(boomLight);
+      setTimeout(() => scene.remove(boomLight), 200);
+
+      // Dano em área (Splash Damage)
+      bots.forEach(bot => {
+        const d = bot.position.distanceTo(barrel.position);
+        if (d < 10) {
+          const dmg = Math.floor((1 - d / 10) * 140);
+          bot.takeDamage(dmg, true, bot.position.clone().add(new THREE.Vector3(0, 1.5, 0)));
+        }
+      });
+
+      showDamagePopup(150, true, barrel.position);
     }
 
     function createTracer(from, to, colorHex) {
@@ -819,17 +1071,39 @@
       const line = new THREE.Line(geom, mat);
       scene.add(line);
 
-      tracers.push({ line, from: from.clone(), to: to.clone(), progress: 0, speed: 6.5 });
+      tracers.push({ line, from: from.clone(), to: to.clone(), progress: 0, speed: 7.0 });
+    }
+
+    function triggerHitmarker(isCrit) {
+      const reticle = document.getElementById('crosshair-reticle');
+      reticle.className = isCrit ? 'crosshair-reticle crit' : 'crosshair-reticle hit';
+      setTimeout(() => { reticle.className = 'crosshair-reticle'; }, 110);
+    }
+
+    function showDamagePopup(dmg, isCrit, worldPos) {
+      const screenPos = worldPos.clone().project(camera);
+      const x = (screenPos.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-(screenPos.y * 0.5) + 0.5) * window.innerHeight;
+
+      const popup = document.createElement('div');
+      popup.className = isCrit ? 'damage-popup damage-crit' : 'damage-popup damage-normal';
+      popup.innerText = isCrit ? `CRIT! ${dmg}` : `${dmg}`;
+      popup.style.left = `${x}px`;
+      popup.style.top = `${y}px`;
+
+      document.body.appendChild(popup);
+      setTimeout(() => { popup.remove(); }, 650);
     }
 
     function reloadWeapon() {
       if (isReloading || currentWeapon.ammo === currentWeapon.maxAmmo) return;
       isReloading = true;
+      const t = currentWeapon.reloadTime * (1 - progression.reloadBonus) * 1000;
       setTimeout(() => {
         currentWeapon.ammo = currentWeapon.maxAmmo;
         isReloading = false;
         document.getElementById('ammo-cur').innerText = currentWeapon.ammo;
-      }, 1000);
+      }, t);
     }
 
     function updateHUD() {
@@ -838,7 +1112,7 @@
     }
 
     /* =========================================================================
-       7. ENTRADAS TOUCH E MOUSE
+       9. TOUCH CONTROLS & PC INPUT
        ========================================================================= */
     const joyInput = new THREE.Vector2(0, 0);
     const joystickZone = document.getElementById('joystick-zone');
@@ -854,9 +1128,7 @@
     window.addEventListener('touchmove', (e) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
-        if (t.identifier === joyTouchId) {
-          updateJoystick(t.clientX, t.clientY);
-        }
+        if (t.identifier === joyTouchId) updateJoystick(t.clientX, t.clientY);
       }
     });
 
@@ -888,7 +1160,6 @@
       joyInput.set(kx / 45, -(ky / 45));
     }
 
-    // Touch Aim Zone
     const aimZone = document.getElementById('touch-aim-zone');
     let aimTouchId = null;
     let lastTouchX = 0, lastTouchY = 0;
@@ -916,27 +1187,23 @@
 
     const resetAim = (e) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
-        if (e.changedTouches[i].identifier === aimTouchId) {
-          aimTouchId = null;
-        }
+        if (e.changedTouches[i].identifier === aimTouchId) aimTouchId = null;
       }
     };
     aimZone.addEventListener('touchend', resetAim);
     aimZone.addEventListener('touchcancel', resetAim);
 
-    // Botões
     document.getElementById('btn-touch-fire').addEventListener('touchstart', (e) => { e.preventDefault(); shootWeapon(); });
     document.getElementById('btn-touch-scope').addEventListener('touchstart', (e) => { e.preventDefault(); toggleScope(); });
     document.getElementById('btn-touch-reload').addEventListener('touchstart', (e) => { e.preventDefault(); reloadWeapon(); });
     document.getElementById('btn-touch-jump').addEventListener('touchstart', (e) => {
       e.preventDefault();
       if (player.isGrounded) {
-        player.velocityY = 8.5;
+        player.velocityY = 9.2;
         player.isGrounded = false;
       }
     });
 
-    // Controles PC
     window.addEventListener('keydown', (e) => {
       keys[e.code] = true;
       if (e.code === 'KeyR') reloadWeapon();
@@ -944,7 +1211,7 @@
       if (e.code === 'Digit2') switchWeapon(1);
       if (e.code === 'Digit3') switchWeapon(2);
       if (e.code === 'Space' && player.isGrounded) {
-        player.velocityY = 8.5;
+        player.velocityY = 9.2;
         player.isGrounded = false;
       }
     });
@@ -973,13 +1240,30 @@
     });
 
     /* =========================================================================
-       8. LOOP DE ATUALIZAÇÃO (CÂMERA OVER-THE-SHOULDER)
+       10. LOOP DE ATUALIZAÇÃO (COLISÃO 3D COM PLATAFORMAS & CÂMERA OVER-SHOULDER)
        ========================================================================= */
     const clock = new THREE.Clock();
+
+    function checkFloorHeight(px, pz, currentY) {
+      let floorY = 0;
+      platforms.forEach(p => {
+        if (px >= p.minX && px <= p.maxX && pz >= p.minZ && pz <= p.maxZ) {
+          if (currentY + 0.5 >= p.topY) {
+            floorY = Math.max(floorY, p.topY);
+          }
+        }
+      });
+      return floorY;
+    }
 
     function animate() {
       requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.1);
+
+      // Movimentação Fluida com Bônus de Maestria
+      const baseSpeed = 5.8;
+      const speedMultiplier = 1 + (progression.speedBonus / 100);
+      const moveSpeed = baseSpeed * speedMultiplier;
 
       const inputVector = new THREE.Vector2(joyInput.x, joyInput.y);
       if (keys['KeyW']) inputVector.y += 1;
@@ -988,7 +1272,6 @@
       if (keys['KeyD']) inputVector.x += 1;
 
       const isMoving = inputVector.lengthSq() > 0.01;
-      const moveSpeed = 5.4;
 
       if (isMoving) {
         inputVector.normalize();
@@ -1000,85 +1283,86 @@
           .addScaledVector(right, inputVector.x)
           .normalize();
 
-        player.position.addScaledVector(moveDir, moveSpeed * delta);
+        const nextX = player.position.x + moveDir.x * moveSpeed * delta;
+        const nextZ = player.position.z + moveDir.z * moveSpeed * delta;
+
+        player.position.x = nextX;
+        player.position.z = nextZ;
 
         const targetRot = Math.atan2(moveDir.x, moveDir.z);
         let diff = targetRot - playerAvatar.root.rotation.y;
         while (diff < -Math.PI) diff += Math.PI * 2;
         while (diff > Math.PI) diff -= Math.PI * 2;
-        playerAvatar.root.rotation.y += diff * 14 * delta;
+        playerAvatar.root.rotation.y += diff * 15 * delta;
 
-        player.walkCycle += delta * 11;
+        player.walkCycle += delta * 12;
         playerAvatar.leftLeg.rotation.x = Math.sin(player.walkCycle) * 0.7;
         playerAvatar.rightLeg.rotation.x = -Math.sin(player.walkCycle) * 0.7;
-        playerAvatar.leftArm.rotation.x = -Math.sin(player.walkCycle) * 0.5;
       } else {
         playerAvatar.leftLeg.rotation.x = 0;
         playerAvatar.rightLeg.rotation.x = 0;
-        playerAvatar.leftArm.rotation.x = 0;
       }
 
-      // Gravidade
-      if (!player.isGrounded) {
-        player.velocityY -= 24 * delta;
+      // Gravidade e Plataformas Verticais
+      const floorHeight = checkFloorHeight(player.position.x, player.position.z, player.position.y);
+
+      if (player.position.y > floorHeight || !player.isGrounded) {
+        player.velocityY -= 26 * delta;
         player.position.y += player.velocityY * delta;
-        if (player.position.y <= 0) {
-          player.position.y = 0;
+
+        if (player.position.y <= floorHeight) {
+          player.position.y = floorHeight;
           player.velocityY = 0;
           player.isGrounded = true;
         }
+      } else {
+        player.position.y = floorHeight;
+        player.isGrounded = true;
       }
-      playerAvatar.root.position.copy(player.position);
 
-      // Inclinação do braço direito acompanha a mira vertical
+      playerAvatar.root.position.copy(player.position);
       playerAvatar.rightShoulder.rotation.x = -cameraPitch;
 
-      // Câmera & Zoom do Scope
-      const targetFov = (isAimingScope && currentWeapon.hasScope) ? currentWeapon.scopeZoomFov : normalFov;
-      camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, delta * 12);
+      // Câmera Over-the-Shoulder Suave
+      const targetFov = (isAimingScope && currentWeapon.hasScope) ? currentWeapon.scopeFov : normalFov;
+      camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, delta * 14);
       camera.updateProjectionMatrix();
 
-      // CONFIGURAÇÃO OVER-THE-SHOULDER (Ombro Direito)
-      const camDistance = isAimingScope ? 1.8 : 3.6;
+      const camDist = isAimingScope ? 1.8 : 3.6;
       const camHeight = 1.75;
-      const shoulderSideOffset = isAimingScope ? 0.65 : 0.95; // Desloca para a direita do personagem
+      const sideOffset = isAimingScope ? 0.65 : 0.95;
 
-      // Vetores de orientação da câmera
-      const forwardVec = new THREE.Vector3(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
-      const rightVec = new THREE.Vector3(Math.cos(cameraYaw), 0, -Math.sin(cameraYaw));
+      const fwd = new THREE.Vector3(-Math.sin(cameraYaw), 0, -Math.cos(cameraYaw));
+      const rgt = new THREE.Vector3(Math.cos(cameraYaw), 0, -Math.sin(cameraYaw));
 
-      const hDist = camDistance * Math.cos(cameraPitch);
-      const vDist = camDistance * Math.sin(cameraPitch);
+      const hD = camDist * Math.cos(cameraPitch);
+      const vD = camDist * Math.sin(cameraPitch);
 
-      // Posição da Câmera atrás e à direita do ombro
-      const targetCamPos = new THREE.Vector3()
+      camera.position.set(
+        player.position.x + rgt.x * sideOffset + fwd.x * -hD,
+        player.position.y + camHeight + vD,
+        player.position.z + rgt.z * sideOffset + fwd.z * -hD
+      );
+
+      const lookTarget = new THREE.Vector3()
         .copy(player.position)
-        .addScaledVector(rightVec, shoulderSideOffset)
-        .add(new THREE.Vector3(0, camHeight + vDist, 0))
-        .addScaledVector(forwardVec, -hDist);
-
-      camera.position.copy(targetCamPos);
-
-      // Ponto focal à frente da linha de tiro (deslocado no ombro)
-      const targetLookAt = new THREE.Vector3()
-        .copy(player.position)
-        .addScaledVector(rightVec, shoulderSideOffset)
+        .addScaledVector(rgt, sideOffset)
         .add(new THREE.Vector3(0, camHeight, 0))
-        .addScaledVector(forwardVec, 30)
+        .addScaledVector(fwd, 30)
         .add(new THREE.Vector3(0, -Math.sin(cameraPitch) * 30, 0));
 
-      camera.lookAt(targetLookAt);
+      camera.lookAt(lookTarget);
 
       // Projéteis
       for (let i = tracers.length - 1; i >= 0; i--) {
         const t = tracers[i];
         t.progress += delta * t.speed;
-        const currentHead = new THREE.Vector3().lerpVectors(t.from, t.to, Math.min(1, t.progress));
-        const currentTail = new THREE.Vector3().lerpVectors(t.from, t.to, Math.max(0, t.progress - 0.25));
+        const head = new THREE.Vector3().lerpVectors(t.from, t.to, Math.min(1, t.progress));
+        const tail = new THREE.Vector3().lerpVectors(t.from, t.to, Math.max(0, t.progress - 0.25));
 
         const arr = t.line.geometry.attributes.position.array;
-        arr[0] = currentTail.x; arr[1] = currentTail.y; arr[2] = currentTail.z;
-        arr[3] = currentHead.x; arr[4] = currentHead.y; arr[5] = currentHead.z;
+        arr[0] = tail.x; arr[1] = tail.y; arr[2] = tail.z;
+        arr[3] = head.x; arr[4] = head.y; arr[5] = head.z;
         t.line.geometry.attributes.position.needsUpdate = true;
 
         if (t.progress >= 1.25) {
