@@ -1,1 +1,877 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Outlaw Frontier: 3D Cinematic Western</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0b0706;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #f1e7d0;
+    }
+    #game-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    .hud-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .interactive {
+      pointer-events: auto;
+    }
+    .crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 220, 150, 0.7);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      transition: transform 0.1s ease;
+    }
+    .crosshair::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 3px;
+      height: 3px;
+      background: #ffcc00;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .stats-card {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(18, 12, 10, 0.85);
+      border: 2px solid #8e6234;
+      border-radius: 8px;
+      padding: 12px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+    }
+    .stat-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .bar-container {
+      width: 160px;
+      height: 12px;
+      background: #2b1d16;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid #5a3c22;
+    }
+    .bar-fill {
+      height: 100%;
+      width: 100%;
+      transition: width 0.2s ease;
+    }
+    .hp-fill { background: linear-gradient(90deg, #d32f2f, #ff5252); }
+    .stamina-fill { background: linear-gradient(90deg, #f57c00, #ffb74d); }
+    .quest-card {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(18, 12, 10, 0.85);
+      border: 2px solid #8e6234;
+      border-radius: 8px;
+      padding: 14px 20px;
+      max-width: 280px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+    .quest-card h3 {
+      font-size: 14px;
+      color: #d4a359;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+    }
+    .quest-card p {
+      font-size: 13px;
+      color: #dedede;
+      line-height: 1.4;
+    }
+    .ammo-card {
+      position: absolute;
+      bottom: 25px;
+      right: 25px;
+      background: rgba(18, 12, 10, 0.85);
+      border: 2px solid #8e6234;
+      border-radius: 8px;
+      padding: 14px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+    .ammo-count {
+      font-size: 32px;
+      font-weight: 800;
+      color: #ffc107;
+      letter-spacing: 2px;
+    }
+    .ammo-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #a89f91;
+      letter-spacing: 1px;
+    }
+    .duel-alert {
+      position: absolute;
+      top: 25%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(180, 20, 20, 0.9);
+      border: 2px solid #ffcc00;
+      padding: 14px 28px;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
+      display: none;
+      animation: pulseAlert 1s infinite alternate;
+    }
+    @keyframes pulseAlert {
+      from { transform: translate(-50%, -50%) scale(1); }
+      to { transform: translate(-50%, -50%) scale(1.08); }
+    }
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(10, 6, 5, 0.88);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(6px);
+    }
+    .modal-box {
+      background: #19110d;
+      border: 3px solid #8e6234;
+      border-radius: 12px;
+      padding: 35px 45px;
+      max-width: 580px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 15px 45px rgba(0, 0, 0, 0.9);
+    }
+    .modal-box h1 {
+      font-size: 36px;
+      color: #e5b26b;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      text-shadow: 2px 2px 5px rgba(0,0,0,0.8);
+    }
+    .modal-box h2 {
+      font-size: 15px;
+      color: #9c8a78;
+      margin-bottom: 25px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    .control-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      text-align: left;
+      background: #110b08;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #4a3421;
+      margin-bottom: 25px;
+      font-size: 13px;
+    }
+    .control-item span {
+      color: #e5b26b;
+      font-weight: bold;
+    }
+    .btn-action {
+      background: linear-gradient(180deg, #96612b, #613912);
+      border: 2px solid #e5b26b;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 12px 32px;
+      border-radius: 6px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+    .btn-action:hover {
+      background: linear-gradient(180deg, #b87837, #7c4918);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(229, 178, 107, 0.3);
+    }
+    .scoreboard {
+      position: absolute;
+      top: 80px;
+      left: 20px;
+      background: rgba(18, 12, 10, 0.85);
+      border: 1px solid #8e6234;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 12px;
+    }
+    .scoreboard table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .scoreboard th, .scoreboard td {
+      padding: 4px 8px;
+      text-align: left;
+    }
+    .scoreboard th {
+      color: #e5b26b;
+      border-bottom: 1px solid #4a3421;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
 
+  <div class="hud-layer">
+    <div class="crosshair"></div>
+
+    <div class="stats-card">
+      <div class="stat-row">
+        <span>Vida</span>
+        <div class="bar-container">
+          <div id="hp-bar" class="bar-fill hp-fill"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <span>Stamina</span>
+        <div class="bar-container">
+          <div id="stamina-bar" class="bar-fill stamina-fill"></div>
+        </div>
+      </div>
+      <div class="stat-row" style="color: #ffc107; font-size: 13px;">
+        <span>Ouro: $<span id="gold-display">150</span></span>
+        <span style="margin-left: 10px;">Reputação: <span id="rep-display">100</span></span>
+      </div>
+    </div>
+
+    <div class="scoreboard">
+      <table>
+        <thead>
+          <tr>
+            <th>Pistoleiro</th>
+            <th>Duelos</th>
+            <th>Ping</th>
+          </tr>
+        </thead>
+        <tbody id="scoreboard-body">
+          <tr><td>Você (Local)</td><td id="score-player">0</td><td>15ms</td></tr>
+          <tr><td>Billy The Kid (Bot)</td><td id="score-bot1">0</td><td>32ms</td></tr>
+          <tr><td>Doc Holliday (Bot)</td><td id="score-bot2">0</td><td>28ms</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="quest-card">
+      <h3 id="quest-title">Missão: Recompensa de Ouro</h3>
+      <p id="quest-desc">Explore os arredores do Saloon e elimine os foragidos ou recolha os malotes perdidos pelo deserto.</p>
+    </div>
+
+    <div class="ammo-card">
+      <div class="ammo-count"><span id="ammo-cur">6</span>/<span id="ammo-max">6</span></div>
+      <div class="ammo-label">Revólver Colt .45</div>
+      <div style="font-size: 10px; color: #7f7466; margin-top: 4px;">Pressione R para recarregar</div>
+    </div>
+
+    <div id="duel-banner" class="duel-alert">Duelo Iniciado! Mire e Atire!</div>
+  </div>
+
+  <div id="start-modal" class="modal-overlay interactive">
+    <div class="modal-box">
+      <h1>Outlaw Frontier</h1>
+      <h2>Pistoleiros do Pôr do Sol • 3D Multiplayer</h2>
+      
+      <div class="control-grid">
+        <div class="control-item"><span>W, A, S, D:</span> Movimentação</div>
+        <div class="control-item"><span>Mouse:</span> Mirar câmera</div>
+        <div class="control-item"><span>Botão Esquerdo:</span> Disparar</div>
+        <div class="control-item"><span>Shift:</span> Correr / Galopar</div>
+        <div class="control-item"><span>Espaço:</span> Pular</div>
+        <div class="control-item"><span>R:</span> Recarregar Revólver</div>
+      </div>
+
+      <p style="font-size: 13px; color: #b8a693; margin-bottom: 20px;">
+        Entre na sala multijogador com bots inteligentes sincronizados, explore o vilarejo, complete contratos de caça e dispute duelos rápidos.
+      </p>
+
+      <button id="btn-play" class="btn-action">Entrar na Fronteira</button>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       1. AUDIO ENGINE PROCEDURAL (Web Audio API Synth - Sem dependências)
+       ========================================================================= */
+    const SoundFX = {
+      ctx: null,
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      },
+      playGunshot() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(320, now);
+        osc.frequency.exponentialRampToValueAtTime(30, now + 0.25);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(3000, now);
+        filter.frequency.exponentialRampToValueAtTime(100, now + 0.25);
+
+        gain.gain.setValueAtTime(0.8, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.3);
+
+        // Ruído metálico
+        const node = this.ctx.createBufferSource();
+        const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 0.1, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < buffer.length; i++) data[i] = Math.random() * 2 - 1;
+        node.buffer = buffer;
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.4, now);
+        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        node.connect(nGain);
+        nGain.connect(this.ctx.destination);
+        node.start(now);
+      },
+      playReload() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.setValueAtTime(1200, now + 0.1);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.0, now + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      },
+      playHit() {
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      }
+    };
+
+    /* =========================================================================
+       2. MUNDO & RENDERIZADOR 3D (Three.js Cinematográfico)
+       ========================================================================= */
+    const canvas = document.getElementById('game-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xd47343);
+    scene.fog = new THREE.FogExp2(0xd47343, 0.012);
+
+    const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+    // Iluminação do Pôr do Sol
+    const ambientLight = new THREE.AmbientLight(0x734832, 1.2);
+    scene.add(ambientLight);
+
+    const sunLight = new THREE.DirectionalLight(0xffb070, 2.4);
+    sunLight.position.set(60, 40, -50);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 2048;
+    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.camera.near = 0.5;
+    sunLight.shadow.camera.far = 200;
+    sunLight.shadow.camera.left = -70;
+    sunLight.shadow.camera.right = 70;
+    sunLight.shadow.camera.top = 70;
+    sunLight.shadow.camera.bottom = -70;
+    scene.add(sunLight);
+
+    // Terreno & Deserto
+    const groundGeo = new THREE.PlaneGeometry(300, 300, 32, 32);
+    const groundMat = new THREE.MeshStandardMaterial({
+      color: 0xaa6638,
+      roughness: 0.9,
+      metalness: 0.1
+    });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Cidade / Cenários (Saloon, Correios, Casas, Trilhos de Trem)
+    const buildings = [];
+    function createBuilding(x, z, width, height, depth, color = 0x543825, label = '') {
+      const group = new THREE.Group();
+      const wallMat = new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), wallMat);
+      body.position.y = height / 2;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      group.add(body);
+
+      // Telhado
+      const roofGeo = new THREE.ConeGeometry(width * 0.75, height * 0.35, 4);
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x362114, roughness: 0.9 });
+      const roof = new THREE.Mesh(roofGeo, roofMat);
+      roof.position.y = height + (height * 0.15);
+      roof.rotation.y = Math.PI / 4;
+      roof.castShadow = true;
+      group.add(roof);
+
+      group.position.set(x, 0, z);
+      scene.add(group);
+      buildings.push({ mesh: group, box: new THREE.Box3().setFromObject(group) });
+      return group;
+    }
+
+    // Estruturas do Velho Oeste
+    createBuilding(0, -25, 14, 8, 12, 0x6e452a, 'SALOON');
+    createBuilding(-18, -25, 10, 6, 10, 0x4a3120, 'BANCO');
+    createBuilding(18, -25, 10, 6, 10, 0x523722, 'SHERIFF');
+    createBuilding(-20, 15, 8, 5, 8, 0x5a3b25, 'ESTÁBULO');
+    createBuilding(20, 15, 8, 5, 8, 0x5a3b25, 'ARMAS');
+
+    // Trilhos de Trem ao fundo
+    const trackGeo = new THREE.BoxGeometry(180, 0.2, 1.2);
+    const trackMat = new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8 });
+    const track = new THREE.Mesh(trackGeo, trackMat);
+    track.position.set(0, 0.1, 45);
+    scene.add(track);
+
+    // Cactos e Rochas
+    for (let i = 0; i < 30; i++) {
+      const rx = (Math.random() - 0.5) * 220;
+      const rz = (Math.random() - 0.5) * 220;
+      if (Math.abs(rx) < 30 && Math.abs(rz) < 35) continue;
+
+      const cactusGroup = new THREE.Group();
+      const cactusMat = new THREE.MeshStandardMaterial({ color: 0x2e5628, roughness: 0.7 });
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.35, 3.5, 8), cactusMat);
+      trunk.position.y = 1.75;
+      trunk.castShadow = true;
+      cactusGroup.add(trunk);
+
+      cactusGroup.position.set(rx, 0, rz);
+      scene.add(cactusGroup);
+    }
+
+    /* =========================================================================
+       3. MODELOS PROCEDURAIS DE COWBOYS (Jogador & Bots)
+       ========================================================================= */
+    function createCowboyMesh(hatColor = 0x2b1d16, shirtColor = 0x8b3a2b) {
+      const group = new THREE.Group();
+      
+      // Corpo / Tronco
+      const bodyMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.7 });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.4), bodyMat);
+      body.position.y = 1.35;
+      body.castShadow = true;
+      group.add(body);
+
+      // Cabeça
+      const headMat = new THREE.MeshStandardMaterial({ color: 0xe0a97a, roughness: 0.6 });
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.35), headMat);
+      head.position.y = 2.0;
+      head.castShadow = true;
+      group.add(head);
+
+      // Chapéu de Cowboy
+      const hatBrimMat = new THREE.MeshStandardMaterial({ color: hatColor, roughness: 0.9 });
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.05, 12), hatBrimMat);
+      brim.position.y = 2.2;
+      group.add(brim);
+
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.3, 10), hatBrimMat);
+      crown.position.y = 2.35;
+      group.add(crown);
+
+      // Pernas
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x1f2438, roughness: 0.8 });
+      const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.3), legMat);
+      leftLeg.position.set(-0.2, 0.45, 0);
+      leftLeg.castShadow = true;
+      group.add(leftLeg);
+
+      const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.9, 0.3), legMat);
+      rightLeg.position.set(0.2, 0.45, 0);
+      rightLeg.castShadow = true;
+      group.add(rightLeg);
+
+      // Braço com Revólver
+      const gunMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8 });
+      const gun = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.35), gunMat);
+      gun.position.set(0.45, 1.3, 0.35);
+      group.add(gun);
+
+      return group;
+    }
+
+    /* =========================================================================
+       4. SISTEMA DO JOGADOR & CÂMERA DE TERCEIRA PESSOA
+       ========================================================================= */
+    const player = {
+      mesh: createCowboyMesh(0x1a1a1a, 0x822f28),
+      position: new THREE.Vector3(0, 0, 10),
+      velocity: new THREE.Vector3(),
+      rotationY: 0,
+      hp: 100,
+      maxHp: 100,
+      stamina: 100,
+      ammo: 6,
+      maxAmmo: 6,
+      gold: 150,
+      rep: 100,
+      score: 0,
+      isReloading: false
+    };
+    scene.add(player.mesh);
+
+    // Controles e Câmera Orbital
+    const keys = {};
+    let mouseX = 0, mouseY = 0;
+    let cameraYaw = 0, cameraPitch = 0.15;
+    let isPointerLocked = false;
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (e.code === 'KeyR') reloadWeapon();
+    });
+    window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isPointerLocked) return;
+      cameraYaw -= e.movementX * 0.0025;
+      cameraPitch = Math.max(-0.4, Math.min(0.8, cameraPitch - e.movementY * 0.0025));
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0 && isPointerLocked) shootWeapon();
+    });
+
+    /* =========================================================================
+       5. SISTEMA DE BOTS INTELIGENTES & MULTIPLAYER
+       ========================================================================= */
+    class SmartBot {
+      constructor(id, name, colorHat, colorShirt, x, z) {
+        this.id = id;
+        this.name = name;
+        this.mesh = createCowboyMesh(colorHat, colorShirt);
+        this.position = new THREE.Vector3(x, 0, z);
+        this.mesh.position.copy(this.position);
+        scene.add(this.mesh);
+
+        this.hp = 100;
+        this.score = 0;
+        this.state = 'PATROL'; // PATROL, ENGAGE, DUEL
+        this.target = null;
+        this.speed = 4.2;
+        this.patrolPoint = new THREE.Vector3(x, 0, z);
+        this.shootCooldown = 0;
+      }
+
+      update(delta, playerPos) {
+        if (this.hp <= 0) {
+          this.respawn();
+          return;
+        }
+
+        this.shootCooldown -= delta;
+        const distToPlayer = this.position.distanceTo(playerPos);
+
+        // Transições de IA
+        if (distToPlayer < 18) {
+          this.state = 'ENGAGE';
+        } else {
+          this.state = 'PATROL';
+        }
+
+        if (this.state === 'PATROL') {
+          if (this.position.distanceTo(this.patrolPoint) < 2) {
+            this.patrolPoint.set(
+              (Math.random() - 0.5) * 60,
+              0,
+              (Math.random() - 0.5) * 60
+            );
+          }
+          const dir = new THREE.Vector3().subVectors(this.patrolPoint, this.position).normalize();
+          this.position.addScaledVector(dir, this.speed * 0.6 * delta);
+          this.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+        } else if (this.state === 'ENGAGE') {
+          const dir = new THREE.Vector3().subVectors(playerPos, this.position).normalize();
+          this.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+          
+          // Mantém distância de combate tático
+          if (distToPlayer > 8) {
+            this.position.addScaledVector(dir, this.speed * delta);
+          } else if (distToPlayer < 5) {
+            this.position.addScaledVector(dir, -this.speed * 0.5 * delta);
+          }
+
+          // Disparo com chance de acerto
+          if (this.shootCooldown <= 0 && distToPlayer < 16) {
+            this.shootAtPlayer();
+            this.shootCooldown = 1.4 + Math.random() * 1.0;
+          }
+        }
+
+        this.mesh.position.copy(this.position);
+      }
+
+      shootAtPlayer() {
+        SoundFX.playGunshot();
+        createMuzzleFlash(this.position.clone().add(new THREE.Vector3(0, 1.3, 0)));
+        
+        // Simulação de precisão do bot
+        if (Math.random() > 0.45) {
+          damagePlayer(15);
+        }
+      }
+
+      takeDamage(amount) {
+        this.hp -= amount;
+        SoundFX.playHit();
+        if (this.hp <= 0) {
+          player.score++;
+          player.gold += 50;
+          updateHUD();
+          document.getElementById('score-player').innerText = player.score;
+        }
+      }
+
+      respawn() {
+        this.hp = 100;
+        this.position.set((Math.random() - 0.5) * 70, 0, (Math.random() - 0.5) * 70);
+        this.mesh.position.copy(this.position);
+      }
+    }
+
+    const bots = [
+      new SmartBot(1, 'Billy The Kid', 0x22110c, 0x1d3557, -15, -10),
+      new SmartBot(2, 'Doc Holliday', 0x473322, 0x2a5234, 15, -12)
+    ];
+
+    /* =========================================================================
+       6. SISTEMA DE COMBATE & EFEITOS
+       ======================================================================== */
+    const projectiles = [];
+    function shootWeapon() {
+      if (player.ammo <= 0 || player.isReloading) {
+        reloadWeapon();
+        return;
+      }
+
+      player.ammo--;
+      updateHUD();
+      SoundFX.playGunshot();
+
+      const gunMuzzle = player.mesh.position.clone().add(new THREE.Vector3(0, 1.3, 0));
+      createMuzzleFlash(gunMuzzle);
+
+      // Raycast do centro da tela
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+
+      // Testa acerto em bots
+      bots.forEach(bot => {
+        const botBox = new THREE.Box3().setFromObject(bot.mesh);
+        if (raycaster.ray.intersectsBox(botBox)) {
+          bot.takeDamage(35);
+          triggerDuelBanner();
+        }
+      });
+    }
+
+    function reloadWeapon() {
+      if (player.isReloading || player.ammo === player.maxAmmo) return;
+      player.isReloading = true;
+      SoundFX.playReload();
+      setTimeout(() => {
+        player.ammo = player.maxAmmo;
+        player.isReloading = false;
+        updateHUD();
+      }, 1200);
+    }
+
+    function damagePlayer(amt) {
+      player.hp = Math.max(0, player.hp - amt);
+      SoundFX.playHit();
+      updateHUD();
+      if (player.hp <= 0) {
+        setTimeout(() => {
+          player.hp = 100;
+          player.position.set(0, 0, 15);
+          updateHUD();
+        }, 1500);
+      }
+    }
+
+    function createMuzzleFlash(pos) {
+      const flash = new THREE.PointLight(0xffa500, 5, 6);
+      flash.position.copy(pos);
+      scene.add(flash);
+      setTimeout(() => scene.remove(flash), 50);
+    }
+
+    function triggerDuelBanner() {
+      const banner = document.getElementById('duel-banner');
+      banner.style.display = 'block';
+      setTimeout(() => banner.style.display = 'none', 1800);
+    }
+
+    /* =========================================================================
+       7. UI E INTERFACE PROFISSIONAL
+       ========================================================================= */
+    function updateHUD() {
+      document.getElementById('hp-bar').style.width = `${(player.hp / player.maxHp) * 100}%`;
+      document.getElementById('stamina-bar').style.width = `${player.stamina}%`;
+      document.getElementById('ammo-cur').innerText = player.ammo;
+      document.getElementById('gold-display').innerText = player.gold;
+      document.getElementById('rep-display').innerText = player.rep;
+    }
+
+    document.getElementById('btn-play').addEventListener('click', () => {
+      SoundFX.init();
+      document.getElementById('start-modal').style.display = 'none';
+      canvas.requestPointerLock();
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+      isPointerLocked = (document.pointerLockElement === canvas);
+    });
+
+    /* =========================================================================
+       8. LOOP PRINCIPAL DE ATUALIZAÇÃO (60+ FPS)
+       ========================================================================= */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.1);
+
+      // Movimentação do Jogador
+      const moveSpeed = keys['ShiftLeft'] ? 9.0 : 5.0;
+      const moveDir = new THREE.Vector3();
+
+      if (keys['KeyW']) moveDir.z -= 1;
+      if (keys['KeyS']) moveDir.z += 1;
+      if (keys['KeyA']) moveDir.x -= 1;
+      if (keys['KeyD']) moveDir.x += 1;
+
+      if (moveDir.lengthSq() > 0) {
+        moveDir.normalize();
+        moveDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+        player.position.addScaledVector(moveDir, moveSpeed * delta);
+        player.mesh.rotation.y = cameraYaw + Math.PI;
+
+        if (keys['ShiftLeft']) {
+          player.stamina = Math.max(0, player.stamina - 15 * delta);
+        }
+      } else {
+        player.stamina = Math.min(100, player.stamina + 10 * delta);
+      }
+      player.mesh.position.copy(player.position);
+
+      // Câmera de Terceira Pessoa Cinemática
+      const camDist = 5.5;
+      const camHeight = 2.2;
+      const targetCamPos = new THREE.Vector3(
+        player.position.x + Math.sin(cameraYaw) * camDist * Math.cos(cameraPitch),
+        player.position.y + camHeight + Math.sin(cameraPitch) * camDist,
+        player.position.z + Math.cos(cameraYaw) * camDist * Math.cos(cameraPitch)
+      );
+      camera.position.lerp(targetCamPos, 0.15);
+      camera.lookAt(player.position.x, player.position.y + 1.4, player.position.z);
+
+      // Atualização dos Bots
+      bots.forEach(bot => bot.update(delta, player.position));
+
+      updateHUD();
+      renderer.render(scene, camera);
+    }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+  </script>
+</body>
+</html>
