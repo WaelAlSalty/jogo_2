@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Outlaw Frontier: Realistic Ballistics 3D</title>
+  <title>Outlaw Frontier: 3D Western</title>
   <style>
     * {
       box-sizing: border-box;
@@ -55,9 +55,9 @@
       transition: opacity 0.15s ease;
     }
     .crosshair-circle {
-      width: 20px;
-      height: 20px;
-      border: 1.5px solid rgba(255, 255, 255, 0.45);
+      width: 22px;
+      height: 22px;
+      border: 1.5px solid rgba(255, 255, 255, 0.5);
       border-radius: 50%;
       position: relative;
     }
@@ -253,6 +253,14 @@
       transform: translate(-50%, -50%);
       pointer-events: none;
     }
+    .touch-aim-zone {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 55%;
+      height: 65%;
+      pointer-events: auto;
+    }
     .mobile-buttons {
       position: absolute;
       bottom: 25px;
@@ -403,6 +411,8 @@
       <div class="joystick-knob" id="joystick-knob"></div>
     </div>
 
+    <div class="touch-aim-zone" id="touch-aim-zone"></div>
+
     <div class="mobile-buttons">
       <div class="action-row">
         <button class="touch-btn scope-btn" id="btn-touch-scope">Mira</button>
@@ -416,14 +426,14 @@
   <div id="start-modal" class="modal-overlay interactive">
     <div class="modal-box">
       <h1>Outlaw Frontier</h1>
-      <p>Balística Realista: O projétil sai do cano da arma. Use o botão MIRA na Sniper para zoom tático.</p>
-      <button id="btn-play" class="btn-action">Jogar Agora</button>
+      <p>Balística Alinhada: A arma aponta diretamente para o centro da mira e o tiro sai da ponta do cano.</p>
+      <button id="btn-play" class="btn-action">Entrar no Jogo</button>
     </div>
   </div>
 
   <script>
     /* =========================================================================
-       1. ARQUITETURA DE ARMAS REALISTAS
+       1. ARMAS E ATRIBUTOS
        ========================================================================= */
     const WEAPONS = [
       {
@@ -437,7 +447,6 @@
         fireRate: 0.8,
         spread: 0.002,
         pellets: 1,
-        barrelLength: 1.1,
         hasScope: true,
         scopeZoomFov: 22
       },
@@ -452,7 +461,6 @@
         fireRate: 0.25,
         spread: 0.012,
         pellets: 1,
-        barrelLength: 0.85,
         hasScope: false
       },
       {
@@ -466,7 +474,6 @@
         fireRate: 0.6,
         spread: 0.075,
         pellets: 6,
-        barrelLength: 0.5,
         hasScope: false
       }
     ];
@@ -478,7 +485,7 @@
     let lastShootTime = 0;
 
     /* =========================================================================
-       2. THREE.JS MUNDO, CÂMERA & LUZES
+       2. THREE.JS CENÁRIO & RENDERIZADOR
        ========================================================================= */
     const canvas = document.getElementById('game-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -504,7 +511,6 @@
     sunLight.shadow.mapSize.height = 2048;
     scene.add(sunLight);
 
-    // Chão
     const groundGeo = new THREE.PlaneGeometry(300, 300);
     const groundMat = new THREE.MeshStandardMaterial({ color: 0xba713d, roughness: 0.9 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -513,12 +519,11 @@
     scene.add(ground);
 
     /* =========================================================================
-       3. CONSTRUÇÃO DO PERSONAGEM E ARMA COM CANO FÍSICO
+       3. PERSONAGEM COM BRAÇO ARTICULADO VERTICALMENTE
        ========================================================================= */
     function buildRealisticCowboy() {
       const root = new THREE.Group();
 
-      // Tronco
       const body = new THREE.Mesh(
         new THREE.BoxGeometry(0.7, 0.9, 0.4),
         new THREE.MeshStandardMaterial({ color: 0x7c2d20, roughness: 0.7 })
@@ -527,7 +532,6 @@
       body.castShadow = true;
       root.add(body);
 
-      // Cabeça & Chapéu
       const head = new THREE.Mesh(
         new THREE.BoxGeometry(0.35, 0.36, 0.35),
         new THREE.MeshStandardMaterial({ color: 0xe0ac82, roughness: 0.6 })
@@ -543,7 +547,6 @@
       hat.position.y = 2.22;
       root.add(hat);
 
-      // Pernas
       const legMat = new THREE.MeshStandardMaterial({ color: 0x1f2430, roughness: 0.8 });
       const leftLegGroup = new THREE.Group();
       leftLegGroup.position.set(-0.2, 0.9, 0);
@@ -559,7 +562,6 @@
       rightLegGroup.add(rightLeg);
       root.add(rightLegGroup);
 
-      // Braços
       const armMat = new THREE.MeshStandardMaterial({ color: 0x7c2d20, roughness: 0.7 });
       const leftArmGroup = new THREE.Group();
       leftArmGroup.position.set(-0.48, 1.7, 0);
@@ -568,19 +570,20 @@
       leftArmGroup.add(leftArm);
       root.add(leftArmGroup);
 
-      const rightArmGroup = new THREE.Group();
-      rightArmGroup.position.set(0.48, 1.7, 0);
+      // Ombro direito / Braço com articulação independente
+      const rightShoulder = new THREE.Group();
+      rightShoulder.position.set(0.48, 1.7, 0);
+      root.add(rightShoulder);
+
       const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.75, 0.2), armMat);
       rightArm.position.y = -0.37;
-      rightArmGroup.add(rightArm);
-      root.add(rightArmGroup);
+      rightShoulder.add(rightArm);
 
-      // CONJUNTO DA ARMA FÍSICA E BOCA DO CANO
       const weaponGroup = new THREE.Group();
       weaponGroup.position.set(0, -0.65, 0.2);
-      rightArmGroup.add(weaponGroup);
+      rightShoulder.add(weaponGroup);
 
-      const muzzleNode = new THREE.Group(); // Ponto exato da saída do tiro
+      const muzzleNode = new THREE.Group();
       weaponGroup.add(muzzleNode);
 
       function updateWeaponModel(weapon) {
@@ -593,18 +596,15 @@
         const woodMat = new THREE.MeshStandardMaterial({ color: 0x4a2a18, roughness: 0.8 });
 
         if (weapon.type === 'sniper') {
-          // Coronha de madeira
           const stock = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.14, 0.4), woodMat);
           stock.position.set(0, 0, -0.15);
           weaponGroup.add(stock);
 
-          // Cano longo estriado
           const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.1, 8), metalMat);
           barrel.rotation.x = Math.PI / 2;
           barrel.position.set(0, 0.05, 0.45);
           weaponGroup.add(barrel);
 
-          // Luneta Óptica Telescópica
           const scope = new THREE.Mesh(
             new THREE.CylinderGeometry(0.035, 0.035, 0.45, 8),
             new THREE.MeshStandardMaterial({ color: 0x00e5ff, metalness: 0.9, roughness: 0.1 })
@@ -615,8 +615,8 @@
 
           muzzleNode.position.set(0, 0.05, 1.0);
         } else if (weapon.type === 'rifle') {
-          const body = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.4), woodMat);
-          weaponGroup.add(body);
+          const bodyW = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.4), woodMat);
+          weaponGroup.add(bodyW);
 
           const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.85, 8), metalMat);
           barrel.rotation.x = Math.PI / 2;
@@ -625,19 +625,18 @@
 
           muzzleNode.position.set(0, 0.04, 0.78);
         } else {
-          // Shotgun Dupla
           const stock = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.12, 0.3), woodMat);
           weaponGroup.add(stock);
 
-          const barrel1 = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.55, 8), metalMat);
-          barrel1.rotation.x = Math.PI / 2;
-          barrel1.position.set(-0.025, 0.04, 0.25);
-          weaponGroup.add(barrel1);
+          const b1 = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.55, 8), metalMat);
+          b1.rotation.x = Math.PI / 2;
+          b1.position.set(-0.025, 0.04, 0.25);
+          weaponGroup.add(b1);
 
-          const barrel2 = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.55, 8), metalMat);
-          barrel2.rotation.x = Math.PI / 2;
-          barrel2.position.set(0.025, 0.04, 0.25);
-          weaponGroup.add(barrel2);
+          const b2 = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.55, 8), metalMat);
+          b2.rotation.x = Math.PI / 2;
+          b2.position.set(0.025, 0.04, 0.25);
+          weaponGroup.add(b2);
 
           muzzleNode.position.set(0, 0.04, 0.55);
         }
@@ -650,7 +649,7 @@
         leftLeg: leftLegGroup,
         rightLeg: rightLegGroup,
         leftArm: leftArmGroup,
-        rightArm: rightArmGroup,
+        rightShoulder,
         muzzleNode,
         updateWeaponModel
       };
@@ -660,7 +659,7 @@
     scene.add(playerAvatar.root);
 
     /* =========================================================================
-       4. ESTADO DO JOGADOR, FÍSICA & CÂMERA
+       4. ESTADO DO JOGADOR
        ========================================================================= */
     const player = {
       position: new THREE.Vector3(0, 0, 10),
@@ -678,7 +677,7 @@
     const keys = {};
 
     /* =========================================================================
-       5. BOT COM FÍSICA DE SOLO (Não voa)
+       5. BOT NO SOLO
        ========================================================================= */
     class GroundBot {
       constructor(name, x, z) {
@@ -716,7 +715,6 @@
           }
         }
 
-        // Física travada no chão
         this.position.y = 0;
         this.avatar.root.position.copy(this.position);
 
@@ -753,7 +751,7 @@
     ];
 
     /* =========================================================================
-       6. COMBATE BALÍSTICO: O TIRO SAI DA BOCA DO CANO
+       6. COMBATE BALÍSTICO
        ========================================================================= */
     const tracers = [];
 
@@ -795,11 +793,9 @@
       currentWeapon.ammo--;
       document.getElementById('ammo-cur').innerText = currentWeapon.ammo;
 
-      // PONTO EXATO DE SAÍDA: Boca do cano da arma no espaço tridimensional
       const muzzlePos = new THREE.Vector3();
       playerAvatar.muzzleNode.getWorldPosition(muzzlePos);
 
-      // Raycast a partir do centro da mira
       const raycaster = new THREE.Raycaster();
       for (let p = 0; p < currentWeapon.pellets; p++) {
         const spreadX = (Math.random() - 0.5) * currentWeapon.spread;
@@ -843,32 +839,36 @@
     }
 
     /* =========================================================================
-       7. ENTRADAS: JOYSTICK MOBILE TOUCH + MOUSE/TECLADO PC
+       7. ENTRADAS TOUCH E MOUSE
        ========================================================================= */
     const joyInput = new THREE.Vector2(0, 0);
     const joystickZone = document.getElementById('joystick-zone');
     const joystickKnob = document.getElementById('joystick-knob');
-    let touchId = null;
+    let joyTouchId = null;
 
     joystickZone.addEventListener('touchstart', (e) => {
       const t = e.changedTouches[0];
-      touchId = t.identifier;
+      joyTouchId = t.identifier;
       updateJoystick(t.clientX, t.clientY);
     });
 
     window.addEventListener('touchmove', (e) => {
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
-        if (t.identifier === touchId) {
+        if (t.identifier === joyTouchId) {
           updateJoystick(t.clientX, t.clientY);
         }
       }
     });
 
-    const resetJoy = () => {
-      touchId = null;
-      joyInput.set(0, 0);
-      joystickKnob.style.transform = 'translate(-50%, -50%)';
+    const resetJoy = (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          joyTouchId = null;
+          joyInput.set(0, 0);
+          joystickKnob.style.transform = 'translate(-50%, -50%)';
+        }
+      }
     };
     window.addEventListener('touchend', resetJoy);
     window.addEventListener('touchcancel', resetJoy);
@@ -889,29 +889,43 @@
       joyInput.set(kx / 45, -(ky / 45));
     }
 
-    // Touch Look (Arrastar o dedo na tela para mirar)
-    let lastTouchX = null, lastTouchY = null;
-    canvas.addEventListener('touchstart', (e) => {
-      const t = e.touches[0];
+    // Touch Aim Zone
+    const aimZone = document.getElementById('touch-aim-zone');
+    let aimTouchId = null;
+    let lastTouchX = 0, lastTouchY = 0;
+
+    aimZone.addEventListener('touchstart', (e) => {
+      const t = e.changedTouches[0];
+      aimTouchId = t.identifier;
       lastTouchX = t.clientX;
       lastTouchY = t.clientY;
     });
 
-    canvas.addEventListener('touchmove', (e) => {
-      if (lastTouchX !== null) {
-        const t = e.touches[0];
-        const dx = t.clientX - lastTouchX;
-        const dy = t.clientY - lastTouchY;
-        cameraYaw -= dx * 0.005;
-        cameraPitch = Math.max(-0.45, Math.min(1.15, cameraPitch + dy * 0.005));
-        lastTouchX = t.clientX;
-        lastTouchY = t.clientY;
+    aimZone.addEventListener('touchmove', (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.identifier === aimTouchId) {
+          const dx = t.clientX - lastTouchX;
+          const dy = t.clientY - lastTouchY;
+          cameraYaw -= dx * 0.005;
+          cameraPitch = Math.max(-0.45, Math.min(1.15, cameraPitch + dy * 0.005));
+          lastTouchX = t.clientX;
+          lastTouchY = t.clientY;
+        }
       }
     });
 
-    canvas.addEventListener('touchend', () => { lastTouchX = null; lastTouchY = null; });
+    const resetAim = (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === aimTouchId) {
+          aimTouchId = null;
+        }
+      }
+    };
+    aimZone.addEventListener('touchend', resetAim);
+    aimZone.addEventListener('touchcancel', resetAim);
 
-    // Botões Touch
+    // Botões
     document.getElementById('btn-touch-fire').addEventListener('touchstart', (e) => { e.preventDefault(); shootWeapon(); });
     document.getElementById('btn-touch-scope').addEventListener('touchstart', (e) => { e.preventDefault(); toggleScope(); });
     document.getElementById('btn-touch-reload').addEventListener('touchstart', (e) => { e.preventDefault(); reloadWeapon(); });
@@ -960,7 +974,7 @@
     });
 
     /* =========================================================================
-       8. LOOP PRINCIPAL (60 FPS)
+       8. LOOP DE ATUALIZAÇÃO
        ========================================================================= */
     const clock = new THREE.Clock();
 
@@ -968,7 +982,6 @@
       requestAnimationFrame(animate);
       const delta = Math.min(clock.getDelta(), 0.1);
 
-      // Movimentação Híbrida (Teclado + Joystick)
       const inputVector = new THREE.Vector2(joyInput.x, joyInput.y);
       if (keys['KeyW']) inputVector.y += 1;
       if (keys['KeyS']) inputVector.y -= 1;
@@ -1018,7 +1031,10 @@
       }
       playerAvatar.root.position.copy(player.position);
 
-      // Câmera & Zoom Dinâmico do Scope
+      // Inclinação do braço direito acompanha a mira vertical
+      playerAvatar.rightShoulder.rotation.x = -cameraPitch;
+
+      // Câmera & Zoom do Scope
       const targetFov = (isAimingScope && currentWeapon.hasScope) ? currentWeapon.scopeZoomFov : normalFov;
       camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, delta * 12);
       camera.updateProjectionMatrix();
